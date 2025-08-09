@@ -1,4 +1,6 @@
-![TinkerHub Useless Projects 2.0](images/useless_projects_banner.png)
+
+<img width="3188" height="1202" alt="frame (3)" src="https://github.com/user-attachments/assets/517ad8e9-ad22-457d-9538-a9e62d137cd7" />
+
 
 # Thenga - AI-Powered Coconut Robot 🥥🤖
 
@@ -177,5 +179,5 @@ Sam Sunny: ESP32 firmware, hardware setup, sensor integration, motor control log
 
 **Made with ❤️ and lots of coconut enthusiasm at TinkerHub Useless Projects**
 
-[![TinkerHub](https://img.shields.io/badge/TinkerHub-24?color=%23000000&link=https%3A%2F%2Fwww.tinkerhub.org%2F)](https://www.tinkerhub.org/)
-[![Useless Projects](https://img.shields.io/badge/Useless%20Projects-Finalist-orange)](https://github.com/tinkerhub/useless_project_temp)
+![Static Badge](https://img.shields.io/badge/TinkerHub-24?color=%23000000&link=https%3A%2F%2Fwww.tinkerhub.org%2F)
+![Static Badge](https://img.shields.io/badge/UselessProjects--25-25?link=https%3A%2F%2Fwww.tinkerhub.org%2Fevents%2FQ2Q1TQKX6Q%2FUseless%2520Projects)
