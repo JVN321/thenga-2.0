@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Chatbot with Speech</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            text-align: right;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: #e9ecef;
+            color: #333;
+            margin-right: 20%;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-field {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .mic-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .recording-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #dc3545;
+            animation: pulse 1s infinite;
+            display: none;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .language-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .audio-wave {
+            display: none;
+            align-items: center;
+            gap: 2px;
+            margin-left: 10px;
+        }
+        .wave-bar {
+            width: 3px;
+            height: 20px;
+            background-color: #007bff;
+            border-radius: 1px;
+            animation: wave 1s infinite ease-in-out;
+        }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+        @keyframes wave {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>🤖 ESP32 Chatbot with Speech Recognition</h1>
+        
+        <!-- Microphone Controls -->
+        <div class="mic-controls">
+            <button id="startRecording" class="btn btn-success">🎤 Start Recording</button>
+            <button id="stopRecording" class="btn btn-danger" disabled>⏹️ Stop Recording</button>
+            <div class="recording-indicator" id="recordingIndicator"></div>
+            <div class="audio-wave" id="audioWave">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+            <span id="recordingStatus">Ready to record</span>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status" class="status"></div>
+
+        <!-- Chat Messages -->
+        <div id="chatMessages" class="chat-messages"></div>
+
+        <!-- Text Input -->
+        <div class="input-container">
+            <input type="text" id="messageInput" class="input-field" placeholder="Type your message or use microphone..." />
+            <button id="sendButton" class="btn btn-primary">Send</button>
+            <button id="speakButton" class="btn btn-secondary" disabled>🗣️ Speak</button>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="clearHistory" class="btn btn-secondary">Clear History</button>
+            <button id="testTTS" class="btn btn-secondary">Test TTS</button>
+        </div>
+
+        <!-- Language Information -->
+        <div class="language-info">
+            <strong>Speech Recognition:</strong> Malayalam, English, Hindi<br>
+            <strong>Text-to-Speech:</strong> Malayalam<br>
+            <strong>Translation:</strong> Auto-detect → English (Gemini) → Malayalam
+        </div>
+    </div>
+
+    <script>
+        let recognition;
+        let isRecording = false;
+
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const speakButton = document.getElementById('speakButton');
+        const startRecording = document.getElementById('startRecording');
+        const stopRecording = document.getElementById('stopRecording');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const audioWave = document.getElementById('audioWave');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const status = document.getElementById('status');
+
+        // Initialize speech recognition
+        function initializeSpeechRecognition() {
+            try {
+                // Check if speech recognition is supported
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    
+                    // Configure speech recognition
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
+                    
+                    // Set language to auto-detect or prefer Malayalam
+                    recognition.lang = 'ml-IN'; // Start with Malayalam, will try others if needed
+                    
+                    // Event handlers
+                    recognition.onstart = () => {
+                        isRecording = true;
+                        startRecording.disabled = true;
+                        stopRecording.disabled = false;
+                        recordingIndicator.style.display = 'block';
+                        audioWave.style.display = 'flex';
+                        recordingStatus.textContent = 'Listening... (Malayalam)';
+                        showStatus('Listening for speech...', 'info');
+                    };
+                    
+                    recognition.onresult = (event) => {
+                        const result = event.results[0][0];
+                        const recognizedText = result.transcript;
+                        const confidence = result.confidence;
+                        
+                        messageInput.value = recognizedText;
+                        recordingStatus.textContent = `Recognized: ${recognizedText}`;
+                        showStatus(`Speech recognized: "${recognizedText}" (confidence: ${Math.round(confidence * 100)}%)`, 'success');
+                        
+                        // Auto-send the recognized text after a short delay
+                        setTimeout(() => {
+                            sendMessage('speech');
+                        }, 1000);
+                    };
+                    
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        stopRecordingUI();
+                        
+                        if (event.error === 'no-speech') {
+                            showStatus('No speech detected. Please try again.', 'error');
+                        } else if (event.error === 'not-allowed') {
+                            showStatus('Microphone access denied. Please allow microphone access.', 'error');
+                        } else if (event.error === 'network') {
+                            showStatus('Network error. Please check your internet connection.', 'error');
+                        } else {
+                            // Try with English if Malayalam failed
+                            if (recognition.lang === 'ml-IN') {
+                                recognition.lang = 'en-IN';
+                                showStatus('Trying English recognition...', 'info');
+                                setTimeout(() => {
+                                    if (!isRecording) {
+                                        startSpeechRecognition();
+                                    }
+                                }, 500);
+                                return;
+                            } else if (recognition.lang === 'en-IN') {
+                                recognition.lang = 'hi-IN';
+                                showStatus('Trying Hindi recognition...', 'info');
+                                setTimeout(() => {
+                                    if (!isRecording) {
+                                        startSpeechRecognition();
+                                    }
+                                }, 500);
+                                return;
+                            }
+                            showStatus(`Speech recognition error: ${event.error}`, 'error');
+                        }
+                    };
+                    
+                    recognition.onend = () => {
+                        stopRecordingUI();
+                    };
+                    
+                    showStatus('Speech recognition initialized successfully!', 'success');
+                } else {
+                    showStatus('Speech recognition not supported in this browser', 'error');
+                    startRecording.disabled = true;
+                }
+            } catch (error) {
+                showStatus('Speech recognition initialization failed', 'error');
+                console.error('Speech recognition initialization error:', error);
+                startRecording.disabled = true;
+            }
+        }
+
+        function startSpeechRecognition() {
+            if (recognition && !isRecording) {
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error starting speech recognition:', error);
+                    showStatus('Failed to start speech recognition', 'error');
+                    stopRecordingUI();
+                }
+            }
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition && isRecording) {
+                recognition.stop();
+            }
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            startRecording.disabled = false;
+            stopRecording.disabled = true;
+            recordingIndicator.style.display = 'none';
+            audioWave.style.display = 'none';
+            recordingStatus.textContent = 'Ready to record';
+            recognition.lang = 'ml-IN'; // Reset to Malayalam for next recording
+        }
+
+        // Start recording
+        startRecording.addEventListener('click', () => {
+            startSpeechRecognition();
+        });
+
+        // Stop recording
+        stopRecording.addEventListener('click', () => {
+            stopSpeechRecognition();
+        });
+
+        // Send message (text or speech)
+        async function sendMessage(inputMethod = 'text') {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            try {
+                showStatus('Sending message to chatbot...', 'info');
+
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        message: message,
+                        input_method: inputMethod 
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Add bot response to chat
+                    addMessage(result.reply, 'bot');
+                    speakButton.disabled = false;
+                    speakButton.setAttribute('data-text', result.reply);
+                    
+                    showStatus(`Response received (${result.detected_language} → Malayalam)`, 'success');
+                    
+                    // Auto-play TTS for speech input
+                    if (inputMethod === 'speech') {
+                        setTimeout(() => {
+                            speak(result.reply);
+                        }, 500);
+                    }
+                } else {
+                    addMessage(`Error: ${result.error}`, 'bot');
+                    showStatus(`Chat error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`Connection error: ${error.message}`, 'bot');
+                showStatus(`Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Add message to chat display
+        function addMessage(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = message;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        // Text-to-speech
+        async function speak(text) {
+            try {
+                showStatus('Generating speech...', 'info');
+
+                const response = await fetch('/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    
+                    showStatus('Playing speech...', 'success');
+                } else {
+                    showStatus('Speech synthesis error', 'error');
+                }
+            } catch (error) {
+                showStatus(`TTS error: ${error.message}`, 'error');
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', () => sendMessage('text'));
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage('text');
+            }
+        });
+
+        speakButton.addEventListener('click', () => {
+            const text = speakButton.getAttribute('data-text');
+            if (text) {
+                speak(text);
+            }
+        });
+
+        document.getElementById('clearHistory').addEventListener('click', async () => {
+            try {
+                await fetch('/clear_history', { method: 'POST' });
+                chatMessages.innerHTML = '';
+                showStatus('Chat history cleared', 'success');
+            } catch (error) {
+                showStatus(`Clear history error: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('testTTS').addEventListener('click', () => {
+            speak('നമസ്കാരം! ഇത് ഒരു ടെസ്റ്റ് സന്ദേശമാണ്.');
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            addMessage('Welcome! You can type or use the microphone to chat.', 'bot');
+            addMessage('Click the microphone button to start voice input.', 'bot');
+            initializeSpeechRecognition();
+        });
+    </script>
+</body>
+</html>
